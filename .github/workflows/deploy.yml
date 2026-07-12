@@ -18,6 +18,14 @@ jobs:
           python-version: "3.11"
       - name: Sanity-check app.py compiles
         run: python -m py_compile app.py
+      - name: Inject HF Space front matter into README
+        run: |
+          { cat .hf/README.header.md; echo; cat README.md; } > README.hf.md
+          mv README.hf.md README.md
+          git config user.email "actions@github.com"
+          git config user.name "github-actions"
+          git add README.md
+          git commit -m "chore(hf): inject Space front matter"
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
