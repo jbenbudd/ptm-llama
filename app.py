@@ -180,17 +180,124 @@ def get_pdb_from_esmfold(sequence: str) -> Optional[str]:
         return None
 
 
+CUSTOM_CSS = """
+.ptm-panel {
+    padding: 16px;
+    background: var(--block-background-fill);
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    color: var(--body-text-color);
+}
+.ptm-panel-header {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--body-text-color);
+}
+.ptm-panel-body {
+    line-height: 1.9;
+    margin-bottom: 10px;
+    word-break: break-word;
+    color: var(--body-text-color);
+}
+.ptm-panel-footer {
+    font-size: 12px;
+    color: var(--body-text-color-subdued);
+}
+.ptm-panel-footer code {
+    color: var(--body-text-color);
+}
+.site-chip {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+.ptm-status {
+    padding: 20px;
+    background: var(--block-background-fill);
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    color: var(--body-text-color);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 60px;
+}
+.ptm-status-text { display: flex; flex-direction: column; gap: 4px; }
+.ptm-status-text .primary { font-weight: 600; }
+.ptm-status-text .secondary {
+    color: var(--body-text-color-subdued);
+    font-size: 13px;
+}
+.ptm-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid var(--border-color-primary);
+    border-top-color: #ef4444;
+    border-radius: 50%;
+    animation: ptm-spin 0.9s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes ptm-spin { to { transform: rotate(360deg); } }
+.ptm-error {
+    padding: 16px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    color: var(--body-text-color);
+}
+.ptm-unavailable {
+    padding: 32px;
+    text-align: center;
+    background: var(--block-background-fill);
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    color: var(--body-text-color);
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+/* Force readable contrast on the Examples/Dataset table in all themes. */
+.gradio-container [data-testid="dataset"],
+.gradio-container [data-testid="dataset"] *,
+.gradio-container .samples-table,
+.gradio-container .samples-table * {
+    color: var(--body-text-color) !important;
+}
+"""
+
+
 def _structure_unavailable_html(sequence: str, predicted_sites: List[str], reason: str) -> str:
     sites_str = ", ".join(predicted_sites) if predicted_sites else "None"
     return f"""
-    <div style="padding:32px;text-align:center;background:#f8f9fa;border:1px solid #dee2e6;
-                border-radius:8px;color:#212529;min-height:300px;display:flex;
-                flex-direction:column;justify-content:center;align-items:center;">
+    <div class="ptm-unavailable">
         <h3 style="margin:0 0 12px 0;">3D Structure Unavailable</h3>
         <p style="margin:0 0 8px 0;">{reason}</p>
         <p style="margin:0;"><strong>Predicted sites:</strong> {sites_str}</p>
     </div>
     """
+
+
+def _status_html(primary: str, secondary: Optional[str] = None) -> str:
+    """Loading indicator with a spinner, used while an async phase is running."""
+    sec = f'<span class="secondary">{secondary}</span>' if secondary else ""
+    return f"""
+    <div class="ptm-status" role="status" aria-live="polite">
+      <div class="ptm-spinner" aria-hidden="true"></div>
+      <div class="ptm-status-text">
+        <span class="primary">{primary}</span>
+        {sec}
+      </div>
+    </div>
+    """
+
+
+def _error_html(message: str) -> str:
+    return f'<div class="ptm-error">{message}</div>'
 
 
 def create_3dmol_html(pdb_string: str, sequence: str, predicted_sites: List[str], ptm_type: str) -> str:
@@ -299,10 +406,7 @@ def _sites_summary_html(sequence: str, ptm_type: str, sites: List[str]) -> str:
     )
     if sites:
         header = f"{len(sites)} predicted {ptm_type.lower()} site(s)"
-        body = ", ".join(
-            f'<code style="background:#fde2e2;padding:2px 6px;border-radius:4px;">{s}</code>'
-            for s in sites
-        )
+        body = ", ".join(f'<span class="site-chip">{s}</span>' for s in sites)
     else:
         header = f"No {ptm_type.lower()} sites predicted"
         body = (
@@ -310,33 +414,51 @@ def _sites_summary_html(sequence: str, ptm_type: str, sites: List[str]) -> str:
             "calibrated threshold.</em>"
         )
     return f"""
-    <div style="padding:16px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;color:#212529;">
-      <div style="font-weight:600;margin-bottom:8px;">{header}</div>
-      <div style="line-height:1.9;margin-bottom:10px;word-break:break-word;">{body}</div>
-      <div style="font-size:12px;color:#6c757d;">{footer}</div>
+    <div class="ptm-panel">
+      <div class="ptm-panel-header">{header}</div>
+      <div class="ptm-panel-body">{body}</div>
+      <div class="ptm-panel-footer">{footer}</div>
     </div>
     """
 
 
 def predict_ptm_sites(sequence: str, ptm_type: str):
-    """Orchestrator: sanitize sequence, run PTM prediction, render sites + 3D viewer."""
+    """Orchestrator: sanitize sequence, run PTM prediction, render sites + 3D viewer.
+
+    Implemented as a generator so the UI can stream visible loading states
+    between phases (site prediction on GPU, then ESMFold structure).
+    """
     if not sequence or not sequence.strip():
-        return (
-            '<div style="padding:16px;color:#b45309;">Please enter an amino acid sequence.</div>',
+        yield (
+            _error_html("Please enter an amino acid sequence."),
             _structure_unavailable_html("", [], "No sequence provided."),
         )
+        return
     if ptm_type not in PTM_INSTRUCTIONS:
-        return (
-            f'<div style="padding:16px;color:#b45309;">Unknown PTM type: {ptm_type}.</div>',
+        yield (
+            _error_html(f"Unknown PTM type: {ptm_type}."),
             _structure_unavailable_html("", [], "Unknown PTM type."),
         )
+        return
     clean_seq = clean_sequence(sequence)
     if not clean_seq:
-        return (
-            '<div style="padding:16px;color:#b45309;">Invalid sequence: no valid amino-acid letters found.</div>',
+        yield (
+            _error_html("Invalid sequence: no valid amino-acid letters found."),
             _structure_unavailable_html("", [], "Invalid sequence."),
         )
+        return
 
+    yield (
+        _status_html(
+            f"Running {ptm_type.lower()} site prediction on GPU…",
+            f"Sliding-window inference over {len(clean_seq)} residues. "
+            "This can take up to a minute — please be patient.",
+        ),
+        _status_html(
+            "Waiting for site prediction…",
+            "3D structure will be predicted once site prediction completes.",
+        ),
+    )
     sites = run_inference(clean_seq, ptm_type)
     sites_html = _sites_summary_html(clean_seq, ptm_type, sites)
 
@@ -346,18 +468,26 @@ def predict_ptm_sites(sequence: str, ptm_type: str):
             f"Sequence too long for ESMFold structure prediction "
             f"({len(clean_seq)} residues, max {ESMFOLD_MAX_LENGTH}).",
         )
-    else:
-        pdb = get_pdb_from_esmfold(clean_seq)
-        if pdb:
-            structure_html = create_3dmol_html(pdb, clean_seq, sites, ptm_type)
-        else:
-            structure_html = _structure_unavailable_html(
-                clean_seq, sites,
-                "The ESMFold structure prediction service is currently unavailable. "
-                "Please try again later.",
-            )
+        yield sites_html, structure_html
+        return
 
-    return sites_html, structure_html
+    yield (
+        sites_html,
+        _status_html(
+            "Predicting 3D structure with ESMFold…",
+            f"{len(clean_seq)} residues via the public ESMFold API.",
+        ),
+    )
+    pdb = get_pdb_from_esmfold(clean_seq)
+    if pdb:
+        structure_html = create_3dmol_html(pdb, clean_seq, sites, ptm_type)
+    else:
+        structure_html = _structure_unavailable_html(
+            clean_seq, sites,
+            "The ESMFold structure prediction service is currently unavailable. "
+            "Please try again later.",
+        )
+    yield sites_html, structure_html
 
 
 ABOUT_MD = f"""
@@ -380,7 +510,7 @@ on Hugging Face: [{MODEL_REPO}]({MODEL_URL}).
 """
 
 
-with gr.Blocks(theme=gr.themes.Glass(), title="ptm-llama") as demo:
+with gr.Blocks(theme=gr.themes.Glass(), title="ptm-llama", css=CUSTOM_CSS) as demo:
     gr.Markdown("# 🧬 ptm-llama — multi-PTM site predictor")
     gr.Markdown(
         "Predict post-translational modification sites in a protein sequence. "
@@ -421,7 +551,7 @@ with gr.Blocks(theme=gr.themes.Glass(), title="ptm-llama") as demo:
                 label="Examples",
             )
 
-        with gr.Column(scale=3):
+        with gr.Column(scale=2):
             output_structure = gr.HTML(label="3D structure (ESMFold)")
             gr.Markdown(
                 f"Structure predicted on demand via the "
