@@ -184,7 +184,9 @@ THEME = gr.themes.Glass(
     primary_hue="sky",
     secondary_hue="slate",
     neutral_hue="slate",
-    font=[gr.themes.GoogleFont("Source Serif 4"), "Georgia", "serif"],
+    # Suisse Works isn't on Google Fonts; Literata is a soft, low-contrast
+    # modern serif in a similar vein and loads cleanly in Spaces.
+    font=[gr.themes.GoogleFont("Literata"), "Georgia", "serif"],
     font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
 )
 
