@@ -510,7 +510,7 @@ on Hugging Face: [{MODEL_REPO}]({MODEL_URL}).
 """
 
 
-with gr.Blocks(theme=gr.themes.Glass(), title="ptm-llama", css=CUSTOM_CSS) as demo:
+with gr.Blocks(theme=gr.themes.Ocean(), title="ptm-llama", css=CUSTOM_CSS) as demo:
     gr.Markdown("# 🧬 ptm-llama — multi-PTM site predictor")
     gr.Markdown(
         "Predict post-translational modification sites in a protein sequence. "
