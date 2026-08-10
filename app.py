@@ -180,13 +180,27 @@ def get_pdb_from_esmfold(sequence: str) -> Optional[str]:
         return None
 
 
-# Stock Gradio Default: follows the Space / browser light–dark setting with no
-# custom palette. IBM Plex Serif sits between a UI sans and a full book serif;
-# sequence text stays on the matching Plex Mono.
+# Stock Gradio Default with no custom palette. Outfit is a light geometric sans;
+# sequences stay monospace.
+#
+# Gradio does NOT read the Hugging Face website light/dark toggle — without an
+# explicit __theme it follows the OS/browser prefers-color-scheme, which is why
+# a Space can look pitch-black while HF itself is in light mode. Default to
+# light when no theme is specified; ?__theme=dark still works.
 THEME = gr.themes.Default(
-    font=[gr.themes.GoogleFont("IBM Plex Serif"), "Georgia", "serif"],
+    font=[gr.themes.GoogleFont("Outfit"), "ui-sans-serif", "sans-serif"],
     font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
 )
+
+_THEME_JS = """
+() => {
+  const url = new URL(window.location);
+  if (!url.searchParams.get('__theme')) {
+    url.searchParams.set('__theme', 'light');
+    window.location.replace(url.href);
+  }
+}
+"""
 
 CUSTOM_CSS = """
 /* Sequence / site data: monospace for readability. */
@@ -522,7 +536,7 @@ on Hugging Face: [{MODEL_REPO}]({MODEL_URL}).
 """
 
 
-with gr.Blocks(theme=THEME, title="ptm-llama", css=CUSTOM_CSS) as demo:
+with gr.Blocks(theme=THEME, title="ptm-llama", css=CUSTOM_CSS, js=_THEME_JS) as demo:
     gr.Markdown("# 🧬 ptm-llama — multi-PTM site predictor")
     gr.Markdown(
         "Predict post-translational modification sites in a protein sequence. "
