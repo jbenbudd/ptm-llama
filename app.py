@@ -180,159 +180,58 @@ def get_pdb_from_esmfold(sequence: str) -> Optional[str]:
         return None
 
 
-# Gradio's built-in "Glass" only adds light vertical gradients — real frost /
-# translucency has to come from custom CSS. Stock Glass also defaults to Optima,
-# which reads as dated; we override fonts and push a lighter palette here.
-THEME = gr.themes.Glass(
-    primary_hue="sky",
-    secondary_hue="slate",
-    neutral_hue="slate",
-    radius_size="lg",
-    spacing_size="md",
-    text_size="md",
-    font=[gr.themes.GoogleFont("Plus Jakarta Sans"), "ui-sans-serif", "sans-serif"],
+# Stock Gradio Default: follows the Space / browser light–dark setting with no
+# custom palette. IBM Plex Serif sits between a UI sans and a full book serif;
+# sequence text stays on the matching Plex Mono.
+THEME = gr.themes.Default(
+    font=[gr.themes.GoogleFont("IBM Plex Serif"), "Georgia", "serif"],
     font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
-).set(
-    # Only keys known to exist on Gradio Glass / Base — unknown kwargs crash boot.
-    body_background_fill="linear-gradient(160deg, #f7fbff 0%, #eef5fb 45%, #f5f7fa 100%)",
-    body_background_fill_dark="linear-gradient(160deg, #0b1220 0%, #111827 50%, #0f172a 100%)",
-    background_fill_secondary="rgba(255, 255, 255, 0.4)",
-    block_background_fill="rgba(255, 255, 255, 0.55)",
-    block_background_fill_dark="rgba(30, 41, 59, 0.45)",
-    block_border_width="1px",
-    block_border_width_dark="1px",
-    block_label_background_fill="rgba(255, 255, 255, 0.65)",
-    block_label_background_fill_dark="rgba(51, 65, 85, 0.65)",
-    block_label_text_color="*neutral_600",
-    block_title_text_color="*neutral_700",
-    input_background_fill="rgba(255, 255, 255, 0.75)",
-    input_background_fill_dark="rgba(15, 23, 42, 0.55)",
-    button_primary_background_fill="linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%)",
-    button_primary_background_fill_hover="linear-gradient(180deg, #bae6fd 0%, #7dd3fc 100%)",
-    button_primary_text_color="#0c4a6e",
-    button_primary_border_color="#7dd3fc",
 )
 
 CUSTOM_CSS = """
-/* —— Global glass shell —— */
-.gradio-container {
-    min-height: 100vh;
-}
-.gradio-container .main,
-.gradio-container .wrap {
-    background: transparent !important;
-}
-
-/* Frost Gradio blocks so the light gradient shows through. */
-.gradio-container .block,
-.gradio-container .form,
-.gradio-container .panel {
-    background: rgba(255, 255, 255, 0.55) !important;
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
-    border: 1px solid rgba(148, 163, 184, 0.28) !important;
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.05);
-}
-.dark .gradio-container .block,
-.dark .gradio-container .form,
-.dark .gradio-container .panel {
-    background: rgba(30, 41, 59, 0.45) !important;
-    border-color: rgba(148, 163, 184, 0.18) !important;
-}
-
-/* Soften markdown / headings. */
-.gradio-container .prose,
-.gradio-container markdown,
-.gradio-container .markdown {
-    color: #334155;
-}
-.dark .gradio-container .prose,
-.dark .gradio-container markdown,
-.dark .gradio-container .markdown {
-    color: #e2e8f0;
-}
-.gradio-container .prose h1,
-.gradio-container markdown h1 {
-    font-weight: 650;
-    letter-spacing: -0.03em;
-    color: #0f172a;
-}
-.dark .gradio-container .prose h1,
-.dark .gradio-container markdown h1 {
-    color: #f8fafc;
-}
-
-/* Sequence data always monospace. */
+/* Sequence / site data: monospace for readability. */
 .sequence-input textarea,
 .ptm-panel-body,
 .ptm-panel-footer code,
 .site-chip {
     font-family: var(--font-mono) !important;
     font-variant-ligatures: none;
-    letter-spacing: 0.01em;
-}
-.sequence-input textarea {
-    font-size: 13.5px !important;
-    line-height: 1.55 !important;
-    background: rgba(255, 255, 255, 0.75) !important;
 }
 
-/* Custom result / status panels. */
+/* Result / status panels — theme tokens only so light & dark both work. */
 .ptm-panel,
 .ptm-status,
 .ptm-unavailable,
 .ptm-error {
-    padding: 18px 20px;
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(18px) saturate(1.2);
-    -webkit-backdrop-filter: blur(18px) saturate(1.2);
-    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.05);
-    color: #334155;
-}
-.dark .ptm-panel,
-.dark .ptm-status,
-.dark .ptm-unavailable,
-.dark .ptm-error {
-    background: rgba(30, 41, 59, 0.5);
-    border-color: rgba(148, 163, 184, 0.2);
-    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color-primary);
+    background: var(--block-background-fill);
+    color: var(--body-text-color);
 }
 .ptm-panel-header {
     font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-bottom: 10px;
-    color: #0f172a;
+    margin-bottom: 8px;
 }
-.dark .ptm-panel-header { color: #f8fafc; }
 .ptm-panel-body {
-    line-height: 1.85;
-    margin-bottom: 12px;
+    line-height: 1.8;
+    margin-bottom: 10px;
     word-break: break-word;
 }
 .ptm-panel-footer {
-    font-size: 12.5px;
-    color: #64748b;
-}
-.dark .ptm-panel-footer { color: #94a3b8; }
-.ptm-panel-footer code {
-    color: #0f172a;
     font-size: 12px;
+    color: var(--body-text-color-subdued);
 }
-.dark .ptm-panel-footer code { color: #e2e8f0; }
+.ptm-panel-footer code {
+    color: var(--body-text-color);
+}
 .site-chip {
     display: inline-block;
-    background: rgba(14, 165, 233, 0.12);
-    color: #0369a1;
-    padding: 2px 8px;
-    border-radius: 999px;
+    background: color-mix(in srgb, var(--body-text-color) 10%, transparent);
+    color: var(--body-text-color);
+    padding: 2px 6px;
+    border-radius: 4px;
     font-weight: 500;
-    font-size: 12.5px;
-}
-.dark .site-chip {
-    background: rgba(56, 189, 248, 0.18);
-    color: #7dd3fc;
 }
 .ptm-status {
     display: flex;
@@ -341,28 +240,24 @@ CUSTOM_CSS = """
     min-height: 60px;
 }
 .ptm-status-text { display: flex; flex-direction: column; gap: 4px; }
-.ptm-status-text .primary { font-weight: 600; letter-spacing: -0.01em; }
+.ptm-status-text .primary { font-weight: 600; }
 .ptm-status-text .secondary {
-    color: #64748b;
+    color: var(--body-text-color-subdued);
     font-size: 13px;
 }
-.dark .ptm-status-text .secondary { color: #94a3b8; }
 .ptm-spinner {
     width: 22px;
     height: 22px;
-    border: 3px solid rgba(148, 163, 184, 0.35);
-    border-top-color: #38bdf8;
+    border: 3px solid var(--border-color-primary);
+    border-top-color: var(--body-text-color);
     border-radius: 50%;
     animation: ptm-spin 0.9s linear infinite;
     flex-shrink: 0;
 }
 @keyframes ptm-spin { to { transform: rotate(360deg); } }
 .ptm-error {
-    background: rgba(254, 226, 226, 0.75);
-    border-color: rgba(239, 68, 68, 0.35);
-}
-.dark .ptm-error {
-    background: rgba(127, 29, 29, 0.35);
+    background: color-mix(in srgb, #ef4444 10%, var(--block-background-fill));
+    border-color: color-mix(in srgb, #ef4444 35%, var(--border-color-primary));
 }
 .ptm-unavailable {
     text-align: center;
