@@ -180,53 +180,87 @@ def get_pdb_from_esmfold(sequence: str) -> Optional[str]:
         return None
 
 
+THEME = gr.themes.Glass(
+    primary_hue="sky",
+    secondary_hue="slate",
+    neutral_hue="slate",
+    font=[gr.themes.GoogleFont("Source Serif 4"), "Georgia", "serif"],
+    font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
+).set(
+    body_text_color="*neutral_800",
+    body_text_color_subdued="*neutral_500",
+    block_title_text_weight="600",
+    block_label_text_weight="500",
+    button_primary_text_weight="600",
+)
+
 CUSTOM_CSS = """
-.ptm-panel {
-    padding: 16px;
-    background: var(--block-background-fill);
-    border: 1px solid var(--border-color-primary);
-    border-radius: 8px;
+/* Prose stays on the theme serif; sequence data is always monospace. */
+.sequence-input textarea,
+.ptm-panel-body,
+.ptm-panel-footer code,
+.site-chip {
+    font-family: var(--font-mono) !important;
+    font-variant-ligatures: none;
+    letter-spacing: 0.01em;
+}
+.sequence-input textarea {
+    font-size: 13.5px !important;
+    line-height: 1.55 !important;
+}
+
+.ptm-panel,
+.ptm-status,
+.ptm-unavailable,
+.ptm-error {
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border-color-primary) 80%, transparent);
+    background: color-mix(in srgb, var(--block-background-fill) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
     color: var(--body-text-color);
 }
 .ptm-panel-header {
     font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--body-text-color);
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
 }
 .ptm-panel-body {
-    line-height: 1.9;
-    margin-bottom: 10px;
+    line-height: 1.85;
+    margin-bottom: 12px;
     word-break: break-word;
-    color: var(--body-text-color);
 }
 .ptm-panel-footer {
-    font-size: 12px;
+    font-size: 12.5px;
     color: var(--body-text-color-subdued);
 }
 .ptm-panel-footer code {
     color: var(--body-text-color);
+    font-size: 12px;
 }
 .site-chip {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: var(--font-mono);
+    display: inline-block;
+    background: color-mix(in srgb, #0ea5e9 14%, transparent);
+    color: #0369a1;
+    padding: 2px 8px;
+    border-radius: 999px;
     font-weight: 500;
+    font-size: 12.5px;
+}
+.dark .site-chip {
+    background: color-mix(in srgb, #38bdf8 22%, transparent);
+    color: #7dd3fc;
 }
 .ptm-status {
-    padding: 20px;
-    background: var(--block-background-fill);
-    border: 1px solid var(--border-color-primary);
-    border-radius: 8px;
-    color: var(--body-text-color);
     display: flex;
     align-items: center;
     gap: 14px;
     min-height: 60px;
 }
 .ptm-status-text { display: flex; flex-direction: column; gap: 4px; }
-.ptm-status-text .primary { font-weight: 600; }
+.ptm-status-text .primary { font-weight: 600; letter-spacing: -0.01em; }
 .ptm-status-text .secondary {
     color: var(--body-text-color-subdued);
     font-size: 13px;
@@ -234,27 +268,19 @@ CUSTOM_CSS = """
 .ptm-spinner {
     width: 22px;
     height: 22px;
-    border: 3px solid var(--border-color-primary);
-    border-top-color: #ef4444;
+    border: 3px solid color-mix(in srgb, var(--border-color-primary) 70%, transparent);
+    border-top-color: #0ea5e9;
     border-radius: 50%;
     animation: ptm-spin 0.9s linear infinite;
     flex-shrink: 0;
 }
 @keyframes ptm-spin { to { transform: rotate(360deg); } }
 .ptm-error {
-    padding: 16px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.35);
-    border-radius: 8px;
-    color: var(--body-text-color);
+    background: color-mix(in srgb, #ef4444 8%, var(--block-background-fill));
+    border-color: color-mix(in srgb, #ef4444 35%, transparent);
 }
 .ptm-unavailable {
-    padding: 32px;
     text-align: center;
-    background: var(--block-background-fill);
-    border: 1px solid var(--border-color-primary);
-    border-radius: 8px;
-    color: var(--body-text-color);
     min-height: 300px;
     display: flex;
     flex-direction: column;
@@ -267,6 +293,12 @@ CUSTOM_CSS = """
 .gradio-container .samples-table,
 .gradio-container .samples-table * {
     color: var(--body-text-color) !important;
+}
+/* Example sequence cells are easier to scan in mono. */
+.gradio-container [data-testid="dataset"] td:first-child,
+.gradio-container .samples-table td:first-child {
+    font-family: var(--font-mono) !important;
+    font-size: 12px !important;
 }
 """
 
@@ -510,7 +542,7 @@ on Hugging Face: [{MODEL_REPO}]({MODEL_URL}).
 """
 
 
-with gr.Blocks(theme=gr.themes.Ocean(), title="ptm-llama", css=CUSTOM_CSS) as demo:
+with gr.Blocks(theme=THEME, title="ptm-llama", css=CUSTOM_CSS) as demo:
     gr.Markdown("# 🧬 ptm-llama — multi-PTM site predictor")
     gr.Markdown(
         "Predict post-translational modification sites in a protein sequence. "
@@ -531,6 +563,7 @@ with gr.Blocks(theme=gr.themes.Ocean(), title="ptm-llama", css=CUSTOM_CSS) as de
                     "(e.g. MASDEGKLFVGGLSFDTNEQALEQVFSKYGQ...)"
                 ),
                 lines=6,
+                elem_classes=["sequence-input"],
             )
             ptm_dropdown = gr.Dropdown(
                 choices=PTM_TYPES,
