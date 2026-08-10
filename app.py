@@ -2,8 +2,13 @@
 """ptm-llama Gradio Space: instruction-tuned multi-PTM site prediction."""
 
 import json
+import os
 import re
 from typing import List, Optional, Tuple
+
+# HF Spaces enables Gradio SSR by default; SSR often ignores __theme URL/JS
+# handling and sticks to prefers-color-scheme (pitch-black on dark OS).
+os.environ.setdefault("GRADIO_SSR_MODE", "false")
 
 import gradio as gr
 import requests
@@ -180,29 +185,70 @@ def get_pdb_from_esmfold(sequence: str) -> Optional[str]:
         return None
 
 
-# Stock Gradio Default with no custom palette. Outfit is a light geometric sans;
-# sequences stay monospace.
+# Stock Gradio Default with no custom palette. Space Grotesk is a modern
+# geometric sans with more character than Outfit; sequences stay monospace.
 #
 # Gradio does NOT read the Hugging Face website light/dark toggle — without an
-# explicit __theme it follows the OS/browser prefers-color-scheme, which is why
-# a Space can look pitch-black while HF itself is in light mode. Default to
-# light when no theme is specified; ?__theme=dark still works.
+# explicit override it follows OS prefers-color-scheme. We force light mode
+# below (SSR off + head/js + CSS) so the Space stays readable by default.
 THEME = gr.themes.Default(
-    font=[gr.themes.GoogleFont("Outfit"), "ui-sans-serif", "sans-serif"],
+    font=[gr.themes.GoogleFont("Space Grotesk"), "ui-sans-serif", "sans-serif"],
     font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
 )
 
-_THEME_JS = """
+# Runs as early as possible in the page <head> (more reliable than Blocks js
+# alone under Spaces). Always pin __theme=light and keep .dark stripped.
+_FORCE_LIGHT_HEAD = """
+<script>
+(function () {
+  try {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get("__theme") !== "light") {
+      url.searchParams.set("__theme", "light");
+      window.location.replace(url.href);
+      return;
+    }
+  } catch (e) {}
+  var strip = function () {
+    document.documentElement.classList.remove("dark");
+    if (document.body) document.body.classList.remove("dark");
+  };
+  strip();
+  document.addEventListener("DOMContentLoaded", strip);
+  new MutationObserver(strip).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+})();
+</script>
+"""
+
+_FORCE_LIGHT_JS = """
 () => {
+  const strip = () => {
+    document.documentElement.classList.remove("dark");
+    document.body?.classList.remove("dark");
+  };
+  strip();
   const url = new URL(window.location);
-  if (!url.searchParams.get('__theme')) {
-    url.searchParams.set('__theme', 'light');
+  if (url.searchParams.get("__theme") !== "light") {
+    url.searchParams.set("__theme", "light");
     window.location.replace(url.href);
   }
 }
 """
 
 CUSTOM_CSS = """
+/* Belt-and-suspenders: if .dark still lands, keep the shell light. */
+html.dark,
+html.dark body,
+.dark .gradio-container,
+.dark .gradio-container .main {
+    background: #ffffff !important;
+    color: #111827 !important;
+    color-scheme: light !important;
+}
+
 /* Sequence / site data: monospace for readability. */
 .sequence-input textarea,
 .ptm-panel-body,
@@ -536,7 +582,13 @@ on Hugging Face: [{MODEL_REPO}]({MODEL_URL}).
 """
 
 
-with gr.Blocks(theme=THEME, title="ptm-llama", css=CUSTOM_CSS, js=_THEME_JS) as demo:
+with gr.Blocks(
+    theme=THEME,
+    title="ptm-llama",
+    css=CUSTOM_CSS,
+    js=_FORCE_LIGHT_JS,
+    head=_FORCE_LIGHT_HEAD,
+) as demo:
     gr.Markdown("# 🧬 ptm-llama — multi-PTM site predictor")
     gr.Markdown(
         "Predict post-translational modification sites in a protein sequence. "
@@ -596,4 +648,5 @@ with gr.Blocks(theme=THEME, title="ptm-llama", css=CUSTOM_CSS, js=_THEME_JS) as 
 
 if __name__ == "__main__":
     print("Starting ptm-llama Gradio app...")
-    demo.launch(share=False)
+    # ssr_mode=False: Spaces otherwise enables SSR, which ignores __theme.
+    demo.launch(share=False, ssr_mode=False)
