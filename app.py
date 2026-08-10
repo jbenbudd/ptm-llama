@@ -601,7 +601,9 @@ with gr.Blocks(
         gr.Markdown(ABOUT_MD)
 
     with gr.Row():
-        with gr.Column(scale=1):
+        # Was 1:2 (~33% left). 2:3 (~40% left) gives the examples table
+        # roughly 25% more width so sequences don't need horizontal scroll.
+        with gr.Column(scale=2):
             sequence_input = gr.Textbox(
                 label="Amino acid sequence",
                 placeholder=(
@@ -630,7 +632,7 @@ with gr.Blocks(
                 label="Examples",
             )
 
-        with gr.Column(scale=2):
+        with gr.Column(scale=3):
             output_structure = gr.HTML(label="3D structure (ESMFold)")
             gr.Markdown(
                 f"Structure predicted on demand via the "
