@@ -186,12 +186,6 @@ THEME = gr.themes.Glass(
     neutral_hue="slate",
     font=[gr.themes.GoogleFont("Source Serif 4"), "Georgia", "serif"],
     font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
-).set(
-    body_text_color="*neutral_800",
-    body_text_color_subdued="*neutral_500",
-    block_title_text_weight="600",
-    block_label_text_weight="500",
-    button_primary_text_weight="600",
 )
 
 CUSTOM_CSS = """
